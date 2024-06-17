@@ -113,6 +113,17 @@ func (g *Geometry) UnmarshalJSON(data []byte) error {
 		}
 		g.Geom = geos.NewCollection(geos.TypeIDMultiPolygon, geoms)
 		return nil
+	case "GeometryCollection":
+		geoms := make([]*geos.Geom, len(geoJSON.Geometries))
+		for i, geometry := range geoJSON.Geometries {
+			geom, err := NewGeometryFromGeoJSON(geometry)
+			if err != nil {
+				return err
+			}
+			geoms[i] = geom.Geom
+		}
+		g.Geom = geos.NewCollection(geos.TypeIDGeometryCollection, geoms)
+		return nil
 	case "MultiGeometry":
 		fallthrough // FIXME
 	default:
@@ -257,6 +268,11 @@ func geojsonWriteGeom(sb *strings.Builder, geom *geos.Geom) error {
 			return err
 		}
 		for i, n := 0, geom.NumGeometries(); i < n; i++ {
+			if i != 0 {
+				if err := sb.WriteByte(','); err != nil {
+					return err
+				}
+			}
 			if err := geojsonWriteGeom(sb, geom.Geometry(i)); err != nil {
 				return err
 			}
